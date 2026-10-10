@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta property="og:title" content="Rumbo a Machu Picchu"><meta property="og:description" content="Recorre el Camino Inca, supera desafíos en cada sitio arqueológico y anuda tu quipu. Juego gratis en el navegador."><meta name="description" content="Recorre el Camino Inca, supera desafíos en cada sitio arqueológico y anuda tu quipu."><meta name="theme-color" content="#141a2e">
+<title>Rumbo a Machu Picchu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700;800&family=Alegreya+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: portada ilustrada → mapa (perfil de altitud con el chasqui) → desafío. Transiciones de cartel de lugar, diálogos cortos y destello al ganar. Un solo look: noche andina antes del alba. */
+:root{
+  --night:#141a2e; --stone:#252c45; --stone-2:#323a58;
+  --wool:#efe6d2; --wool-dim:#b9b2a3;
+  --cochineal:#d23c55; --sun:#eba83a; --leaf:#7fae63; --water:#5bb3d6; --indigo:#2b3a6b;
+  --f-display:"Alegreya SC", Georgia, "Times New Roman", serif;
+  --f-body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--night);color:var(--wool);font-family:var(--f-body);font-size:17px;line-height:1.5;
+  background-image:radial-gradient(ellipse 120% 60% at 50% 115%, #3a2b3c 0%, transparent 60%)}
+#app{max-width:880px;margin:0 auto;padding-inline:16px;padding-block:16px 80px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;text-wrap:balance;margin:0;letter-spacing:.01em}
+h2{font-size:1.6rem;line-height:1.15}
+p{margin:0}
+.label{font-size:.78rem;text-transform:uppercase;letter-spacing:.12em;color:var(--wool-dim);font-weight:700}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+.btn{background:var(--sun);color:#1b1408;border:0;border-radius:6px;padding:.7rem 1.3rem;font-weight:700;font-size:1rem}
+.btn:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;color:var(--wool);border:1.5px solid var(--stone-2)}
+.btn.big{font-size:1.2rem;padding:.9rem 2.2rem;font-family:var(--f-display);letter-spacing:.06em}
+button:focus-visible,a:focus-visible,.node:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+.screen{display:flex;flex-direction:column;gap:18px;animation:screenIn .45s ease-out}
+@keyframes screenIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Franja tocapu (patrón textil) */
+.tocapu{height:12px;border-radius:2px;background:
+  linear-gradient(45deg,transparent 35%,var(--sun) 35% 65%,transparent 65%) 0 0/12px 12px,
+  linear-gradient(-45deg,transparent 35%,var(--sun) 35% 65%,transparent 65%) 0 0/12px 12px,
+  linear-gradient(90deg,var(--cochineal) 0 50%,var(--indigo) 50% 100%) 0 0/48px 12px}
+
+/* Portada */
+.cover{position:relative;border-radius:12px;overflow:hidden;min-height:min(78vh,620px);display:flex;flex-direction:column;justify-content:flex-end;isolation:isolate}
+.cover > svg{position:absolute;inset:0;width:100%;height:100%;z-index:-1}
+.cover .mist{animation:drift 18s ease-in-out infinite alternate}
+.cover .mist.b{animation-duration:24s;animation-direction:alternate-reverse}
+@keyframes drift{from{transform:translateX(-60px)}to{transform:translateX(60px)}}
+.cover-ui{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:24px 16px 28px;background:linear-gradient(transparent,rgba(12,10,24,.85) 45%)}
+.cover h1{font-size:clamp(2.6rem,9vw,4.6rem);line-height:.95;text-shadow:0 2px 24px rgba(0,0,0,.5)}
+.cover .label{color:#f3d7a0}
+.seg{display:inline-flex;background:rgba(20,26,46,.8);border-radius:8px;padding:3px;gap:3px}
+.seg-b{background:transparent;border:0;border-radius:6px;padding:.45rem 1rem;font-weight:700;color:var(--wool-dim)}
+.seg-b.on{background:var(--wool);color:var(--night)}
+.small{font-size:.9rem;color:var(--wool-dim)}
+
+/* Barra superior */
+.bar-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.bar-top h1{font-size:1.5rem}
+.stats{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pill{background:var(--stone);border-radius:999px;padding:.3rem .8rem;font-weight:700;font-size:.9rem;display:inline-flex;gap:6px;align-items:center}
+.pill.sun{color:var(--sun)}
+.quipu-mini svg{width:150px;height:auto;display:block}
+
+/* Mapa */
+.map{background:var(--stone);border-radius:10px;padding:12px 8px 6px;overflow-x:auto}
+.map svg{display:block;width:100%;min-width:560px;height:auto}
+.node{cursor:pointer}.node.locked{cursor:not-allowed}
+.map text{paint-order:stroke;stroke:#252c45;stroke-width:4px;stroke-linejoin:round}
+.next{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:var(--stone);border-radius:10px;padding:16px 18px}
+.next > div{min-width:0}
+.next h2{font-size:1.9rem}
+
+/* Desafío */
+.game-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.game-head > div{min-width:0}
+.head-right{display:flex;gap:10px;align-items:center}
+.clock{font-family:var(--f-display);font-size:1.4rem;color:var(--sun)}
+.hint{align-self:flex-start;background:var(--indigo);border-radius:999px;padding:.4rem 1rem;font-weight:700}
+.stage{background:var(--stone);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.msg{min-height:1.6em;font-weight:500}
+.msg.bad{color:#ff8fa0}.msg.good{color:var(--leaf)}
+
+/* Andenes */
+.terraces{display:flex;flex-direction:column;gap:6px}
+.terrace{display:grid;grid-template-columns:150px 1fr;align-items:stretch;border-radius:4px;overflow:hidden;cursor:pointer;min-height:64px;border:0;padding:0;text-align:left;background:none}
+.terrace .tag{background:#3d3428;padding:8px 10px;display:flex;flex-direction:column;justify-content:center}
+.terrace .tag b{font-family:var(--f-display);font-size:1.05rem}
+.terrace .tag small{color:var(--wool-dim)}
+.terrace .soil{background:repeating-linear-gradient(90deg,#5b4430 0 18px,#644b35 18px 36px);display:flex;gap:8px;align-items:center;padding:8px;flex-wrap:wrap;border-bottom:6px solid #8a8070}
+.terrace:nth-child(1){margin-right:16%}.terrace:nth-child(2){margin-right:8%}
+.terrace.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--stone-2);border:2px solid transparent;border-radius:999px;padding:.4rem .9rem;font-weight:700}
+.chip.sel{border-color:var(--sun);background:#4a4030}
+.planted{background:var(--leaf);color:#13200c;border-radius:999px;padding:.25rem .7rem;font-weight:700;font-size:.9rem;animation:pop .3s ease-out}
+@keyframes pop{from{transform:scale(.4)}to{transform:none}}
+
+/* Subida */
+.climb{display:grid;grid-template-columns:1fr 200px;gap:16px;align-items:center}
+.climb svg{width:100%;height:auto;max-height:280px}
+.gauges{display:flex;flex-direction:column;gap:14px;min-width:0}
+.bar{height:14px;background:var(--night);border-radius:7px;overflow:hidden}
+.bar i{display:block;height:100%;width:50%;background:var(--water);transition:width .08s linear}
+.big{font-family:var(--f-display);font-size:2rem;line-height:1}
+.hold{user-select:none;-webkit-user-select:none;touch-action:none;padding:1.1rem;font-size:1.1rem;width:100%}
+.hold.on{background:var(--cochineal);color:var(--wool)}
+
+/* Carrera */
+.runner canvas{width:100%;height:220px;display:block;border-radius:6px;background:var(--night);touch-action:manipulation;cursor:pointer}
+.hud{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+/* Canales */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:min(360px,100%);align-self:center}
+.cell{aspect-ratio:1;max-width:100%;background:#3b3a3a;border:0;border-radius:4px;padding:0;display:block}
+.cell svg{width:100%;height:100%;display:block}
+.pipe-legend{display:flex;justify-content:space-between;width:min(360px,100%);color:var(--wool-dim);font-size:.9rem;align-self:center}
+
+/* Preguntas */
+.q{display:flex;flex-direction:column;gap:10px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.opt{background:var(--stone-2);border:2px solid transparent;border-radius:6px;padding:.7rem 1rem;text-align:left;font-weight:500}
+.opt.right{border-color:var(--leaf)}.opt.wrong{border-color:var(--cochineal);opacity:.7}
+
+/* Cartel de lugar */
+.tc{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;
+  background:radial-gradient(ellipse at center,rgba(24,30,54,.94),rgba(6,8,16,.99));animation:fadeIn .45s ease-out;cursor:pointer}
+.tc.out{animation:fadeOut .55s ease-in forwards}
+.tc-top{font-size:.85rem;letter-spacing:.3em;text-transform:uppercase;color:var(--sun);font-weight:700;animation:up .6s .15s both}
+.tc-orn{display:flex;align-items:center;gap:12px;width:min(440px,80vw)}
+.tc-orn i{flex:1;height:1.5px;background:linear-gradient(90deg,transparent,var(--sun));transform-origin:right;animation:grow .9s .25s both}
+.tc-orn i:last-child{background:linear-gradient(-90deg,transparent,var(--sun));transform-origin:left}
+.tc-orn b{width:12px;height:12px;transform:rotate(45deg);border:2px solid var(--sun);animation:fadeIn .5s .2s both}
+.tc-name{font-size:clamp(2.4rem,9vw,4.4rem);line-height:1;letter-spacing:.1em;animation:nameIn 1.1s .3s both}
+.tc-sub{font-style:italic;color:var(--wool-dim);font-size:1.15rem;animation:up .6s .8s both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes nameIn{from{opacity:0;letter-spacing:.45em;filter:blur(6px)}to{opacity:1;letter-spacing:.1em;filter:none}}
+
+/* Diálogo */
+.dlg-veil{position:fixed;inset:0;z-index:25;display:flex;align-items:flex-end;justify-content:center;padding:16px;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(transparent 40%,rgba(6,8,16,.75));animation:fadeIn .3s ease-out;cursor:pointer}
+.dlg-veil.out{animation:fadeOut .25s ease-in forwards}
+.dlg{position:relative;width:min(760px,100%);background:rgba(20,24,42,.94);border:1.5px solid #4a5170;border-radius:10px;padding:26px 22px 22px;animation:up .35s ease-out}
+.dlg .who{position:absolute;top:-15px;left:18px;background:var(--sun);color:#1b1408;font-family:var(--f-display);font-weight:800;padding:.15rem .9rem;border-radius:4px;letter-spacing:.05em}
+.dlg .line{font-size:1.25rem;min-height:2.6em}
+.dlg .more{position:absolute;right:18px;bottom:10px;color:var(--sun);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+
+/* Destello */
+.flash{position:fixed;inset:0;z-index:40;background:#fff6dc;pointer-events:none;animation:flash 1s ease-out forwards}
+@keyframes flash{0%{opacity:0}18%{opacity:.95}100%{opacity:0}}
+
+/* Saber anudado */
+.veil{position:fixed;inset:0;background:rgba(8,10,20,.8);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10;animation:fadeIn .3s}
+.story{background:var(--wool);color:#231d17;border-radius:8px;max-width:440px;width:100%;overflow:hidden;display:flex;flex-direction:column;animation:up .4s ease-out}
+.story .in{padding:22px 24px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.story .label{color:#6b5f50}
+.story h2{font-size:2.2rem}
+.story .qz{font-style:italic;color:#7a2131;font-weight:700;font-size:1.15rem}
+.story .knot{animation:knot .7s .15s both}
+@keyframes knot{from{transform:scale(0) rotate(-90deg)}70%{transform:scale(1.2)}to{transform:none}}
+
+/* Final */
+.finale{position:relative;border-radius:12px;overflow:hidden;background:linear-gradient(#2b2a4a,#c56a4a 70%,#eba83a)}
+.finale svg{display:block;width:100%;height:auto}
+.finale .over{position:absolute;inset:auto 0 0 0;padding:18px;background:linear-gradient(transparent,rgba(10,10,20,.8))}
+.finale h1{font-size:clamp(2.2rem,7vw,3.4rem)}
+.share{background:var(--stone);border-radius:10px;padding:20px;display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center}
+.share > *{min-width:0}
+.share .time{font-family:var(--f-display);font-size:3.2rem;line-height:1;color:var(--sun)}
+.share-text{background:var(--night);border-radius:6px;padding:12px 14px;user-select:all;-webkit-user-select:all;overflow-wrap:anywhere}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn.wa{background:#3aa860;color:#0b1f12;text-decoration:none;display:inline-block}
+.vote{border:2px dashed var(--sun);border-radius:10px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+.vote > div{min-width:0}
+.vote a{text-decoration:none}
+.credits{color:var(--wool-dim);font-size:.85rem}
+.sound{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:5;background:var(--stone-2);border:1.5px solid #4a5170;border-radius:999px;padding:.5rem 1rem;font-weight:700;color:var(--wool)}
+.sound[aria-pressed="false"]{color:var(--wool-dim)}
+
+@media (max-width:620px){
+  .climb{grid-template-columns:1fr}
+  .terrace{grid-template-columns:110px 1fr}
+  .terrace:nth-child(1),.terrace:nth-child(2){margin-right:0}
+  .share{grid-template-columns:1fr}
+  .quipu-mini{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;animation-delay:0s!important;transition:none!important}}
+.reto{display:flex;flex-direction:column;gap:2px;background:rgba(20,26,46,.85);border:1.5px solid var(--sun);border-radius:8px;padding:10px 18px}
+.reto b{font-family:var(--f-display);font-size:1.2rem}
+.verdict{display:flex;flex-direction:column;gap:4px;border-radius:10px;padding:16px 18px;background:var(--stone)}
+.verdict b{font-family:var(--f-display);font-size:1.6rem}
+.verdict.win{background:#2c4a2a}.verdict.lose{background:#4a2630}
+.name-in{font:inherit;font-weight:700;background:var(--night);color:var(--wool);border:1.5px solid #4a5170;border-radius:6px;padding:.55rem .8rem;max-width:260px}
+.name-in:focus-visible{outline:3px solid var(--water);outline-offset:1px}
+.quipu-big svg{width:260px;max-width:100%;height:auto;display:block}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(() => {
+const $ = (s, r=document) => r.querySelector(s);
+const h = (html) => { const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content.firstElementChild; };
+const app = $('#app');
+const reduced = (()=>{ try{ return matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return false; } })();
+const wait = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ---------- Ruta (aprox., Camino Inca clásico desde Km 82) ---------- */
+const profile = [[0,2700],[7,2750],[12,3000],[16,4215],[18,3760],[19.5,3950],[22,3600],[26,3650],[33,2650],[41,2720],[43,2430]];
+const altAt = km => { for(let i=1;i<profile.length;i++){ const [k0,a0]=profile[i-1],[k1,a1]=profile[i]; if(km<=k1) return a0+(a1-a0)*(km-k0)/(k1-k0); } return profile[profile.length-1][1]; };
+const GUIDE = 'Tayta Amaru';
+const STAGES = [
+  { id:'patallacta', name:'Patallacta', km:7, alt:2750, color:'#7fae63', game:'terraces',
+    meaning:'pueblo en lo alto de la ladera', hint:'Elige un cultivo y tócalo en su andén',
+    line:'Los andenes esperan semillas. Cada cultivo tiene su altura.',
+    fact:'Sus andenes creaban microclimas para cultivar plantas de distintas alturas.'},
+  { id:'warmi', name:'Warmiwañusca', km:16, alt:4215, color:'#d23c55', game:'climb',
+    meaning:'paso de la mujer muerta', hint:'Mantén para subir · suelta para respirar',
+    line:'El paso más alto. Sube a tu ritmo o el soroche te vencerá.',
+    fact:'A 4215 m, es el punto más alto del Camino Inca.'},
+  { id:'runku', name:'Runkurakay', km:18, alt:3760, color:'#eba83a', game:'runner',
+    meaning:'montón de ruinas', hint:'Toca para saltar rocas · con cóndores, no saltes',
+    line:'¡Corre, chasqui! Y cuidado con los cóndores.',
+    fact:'Los chasquis corrían por relevos: un mensaje viajaba cientos de km en un día.'},
+  { id:'sayac', name:'Sayacmarca', km:22, alt:3600, color:'#5bb3d6', game:'pipes',
+    meaning:'pueblo inaccesible', hint:'Toca las piedras para girarlas',
+    line:'El agua no llega a la fuente. Arregla los canales.',
+    fact:'Sus canales de piedra aún llevan agua, más de 500 años después.'},
+  { id:'machu', name:'Machu Picchu', km:43, alt:2430, color:'#efe6d2', game:'quiz',
+    meaning:'montaña vieja', hint:'Elige la respuesta correcta',
+    line:'La Puerta del Sol. Demuestra lo que aprendiste.',
+    fact:'Fue construida hacia 1450 por orden del inca Pachacútec.'},
+];
+
+/* ---------- Configuración para la votación ---------- */
+const SHARE_URL = /^https?:$/.test(location.protocol) ? location.origin + location.pathname : 'https://claude.ai/artifact/7bVhk8kq6LqaiK24uoTP2D'; // usa la dirección donde esté publicado
+const VOTE_URL  = '';  // pega aquí el enlace de la votación
+
+/* ---------- Dificultad ---------- */
+const DIFFS = {
+  facil:  {name:'Fácil',  climb:{up:70,drain:18,rec:36,coca:3,drop:100}, run:{sp:230,acc:5,lives:4,dur:22,condor:.15}, pipes:4, tees:false, quiz:4, pen:0, crops:6, hints:true},
+  normal: {name:'Normal', climb:{up:62,drain:24,rec:30,coca:2,drop:140}, run:{sp:260,acc:7,lives:3,dur:26,condor:.25}, pipes:5, tees:false, quiz:5, pen:5, crops:6, hints:true},
+  dificil:{name:'Difícil',climb:{up:55,drain:30,rec:26,coca:1,drop:200}, run:{sp:290,acc:9,lives:2,dur:30,condor:.35}, pipes:6, tees:true, quiz:6, pen:10, crops:9, hints:false},
+};
+let done = [], elapsed = 0, best = {}, lastFinal = null, diff = 'normal', walkFrom = null;
+const D = () => DIFFS[diff];
+try { done = JSON.parse(localStorage.getItem('qn-done')||'[]'); if(!Array.isArray(done)) done=[]; } catch(e){ done=[]; }
+try { const t = JSON.parse(localStorage.getItem('qn-time')||'{}'); elapsed=+t.elapsed||0; lastFinal=t.lastFinal??null;
+  best = (t.best && typeof t.best==='object') ? t.best : (typeof t.best==='number' ? {normal:t.best} : {});
+  if(DIFFS[t.diff]) diff=t.diff; } catch(e){}
+const save = () => { try{ localStorage.setItem('qn-done', JSON.stringify(done)); localStorage.setItem('qn-time', JSON.stringify({elapsed,best,lastFinal,diff})); }catch(e){} };
+let cleanup = null;
+const stopGame = () => { if(cleanup){ cleanup(); cleanup=null; } };
+const curKm = () => done.length ? STAGES[done.length-1].km : 0;
+
+/* ---------- Reto por enlace: #reto-Nombre-segundos-modo ---------- */
+let reto = null, myName = '';
+try { myName = localStorage.getItem('qn-name') || ''; } catch(e){}
+(() => {
+  const m = (location.hash||'').match(/^#reto-([A-Za-z0-9]{1,14})-(\d{1,5})-(facil|normal|dificil)$/);
+  if(m){ reto = {name:m[1], ms:+m[2]*1000, diff:m[3]}; try{ localStorage.setItem('qn-reto', JSON.stringify(reto)); }catch(e){} }
+  else { try{ const r=JSON.parse(localStorage.getItem('qn-reto')||'null'); if(r && r.name && DIFFS[r.diff]) reto=r; }catch(e){} }
+  if(reto && done.length===0) diff = reto.diff;
+})();
+const cleanName = v => (v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]/g,'').slice(0,14);
+const retoLink = (name, ms) => `${SHARE_URL}#reto-${name||'Chasqui'}-${Math.round(ms/1000)}-${diff}`;
+
+/* ---------- Cronómetro (solo cuenta el tiempo dentro de los desafíos) ---------- */
+const fmt = ms => { const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+let runStart = null, clockInt = null;
+function startClock(el){
+  runStart = performance.now();
+  const tick = () => { if(el) el.textContent = fmt(elapsed + performance.now() - runStart); };
+  tick(); clockInt = setInterval(tick, 250);
+}
+function stopClock(){
+  clearInterval(clockInt); clockInt=null;
+  if(runStart!==null){ elapsed += performance.now()-runStart; runStart=null; save(); }
+}
+function penalize(){ const s=D().pen; if(!s||runStart===null) return ''; elapsed+=s*1000; return ` +${s} s`; }
+function resetRun(){ done=[]; elapsed=0; lastFinal=null; save(); showCover(); }
+
+/* ---------- Sonido: quena sintetizada y bombo, sin archivos ---------- */
+const Sound = (() => {
+  let ctx=null, master=null, music=null, timer=null, on=true;
+  try{ on = localStorage.getItem('qn-sound')!=='off'; }catch(e){}
+  const ensure = () => {
+    if(!ctx){ const AC = window.AudioContext||window.webkitAudioContext; if(!AC) return false;
+      ctx=new AC(); master=ctx.createGain(); master.gain.value=.5; master.connect(ctx.destination); }
+    if(ctx.state==='suspended') ctx.resume();
+    return true;
+  };
+  const freq = s => 440*Math.pow(2,s/12);
+  const quena = (s,t,d,g,dest) => {
+    const o=ctx.createOscillator(), v=ctx.createGain(), lfo=ctx.createOscillator(), lg=ctx.createGain();
+    const f=freq(s); o.type='triangle'; o.frequency.value=f; lfo.frequency.value=5.2; lg.gain.value=f*.01;
+    lfo.connect(lg); lg.connect(o.frequency);
+    v.gain.setValueAtTime(0,t); v.gain.linearRampToValueAtTime(g,t+.03); v.gain.setValueAtTime(g*.8,t+d*.7); v.gain.linearRampToValueAtTime(0,t+d);
+    o.connect(v); v.connect(dest||master); o.start(t); lfo.start(t); o.stop(t+d+.05); lfo.stop(t+d+.05);
+  };
+  const bombo = (t,g,dest) => {
+    const o=ctx.createOscillator(), v=ctx.createGain();
+    o.frequency.setValueAtTime(120,t); o.frequency.exponentialRampToValueAtTime(42,t+.18);
+    v.gain.setValueAtTime(g,t); v.gain.exponentialRampToValueAtTime(.001,t+.28);
+    o.connect(v); v.connect(dest||master); o.start(t); o.stop(t+.3);
+  };
+  // Melodía pentatónica menor (La, Do, Re, Mi, Sol), al estilo de un huayno lento
+  const MEL = [[0,1],[3,.5],[5,.5],[7,1],[5,.5],[3,.5],[0,1],[-2,1],[0,2],
+               [7,1],[10,.5],[7,.5],[5,1],[3,.5],[5,.5],[7,1],[3,1],[0,2],
+               [12,1],[10,.5],[7,.5],[10,1],[7,.5],[5,.5],[7,1],[5,.5],[3,.5],[0,2],[-5,1],[-2,1],[0,2]];
+  const BEAT=.34;
+  const loop = () => {
+    if(!on||!ctx) { timer=null; return; }
+    let t=ctx.currentTime+.06; const t0=t;
+    MEL.forEach(([s,b])=>{ quena(s,t,b*BEAT*.95,.2,music); t+=b*BEAT; });
+    for(let x=t0, i=0; x<t-.01; x+=BEAT, i++){ if(i%2===0) bombo(x, i%4===0?.45:.25, music); }
+    timer=setTimeout(loop,(t-ctx.currentTime-.15)*1000);
+  };
+  const start = () => {
+    if(!on||timer||!ensure()) return;
+    music=ctx.createGain(); music.gain.value=.32; music.connect(master); loop();
+  };
+  const stop = () => {
+    clearTimeout(timer); timer=null;
+    if(music){ try{ music.gain.setTargetAtTime(0,ctx.currentTime,.05); const m=music; setTimeout(()=>m.disconnect(),400); }catch(e){} music=null; }
+  };
+  const sfx = name => {
+    if(!on||!ensure()) return; const t=ctx.currentTime;
+    if(name==='good'){ quena(7,t,.12,.3); quena(12,t+.1,.2,.3); }
+    else if(name==='bad'){ quena(-5,t,.16,.25); quena(-8,t+.14,.28,.25); }
+    else if(name==='tick'){ quena(15,t,.06,.15); }
+    else if(name==='jump'){ const o=ctx.createOscillator(),v=ctx.createGain(); o.type='sine'; o.frequency.setValueAtTime(330,t); o.frequency.exponentialRampToValueAtTime(700,t+.12); v.gain.setValueAtTime(.18,t); v.gain.linearRampToValueAtTime(0,t+.14); o.connect(v); v.connect(master); o.start(t); o.stop(t+.15); }
+    else if(name==='hit'){ bombo(t,.7); quena(-12,t,.25,.2); }
+    else if(name==='chime'){ [12,16,19,24].forEach((s,i)=>quena(s,t+i*.12,.6,.14)); }
+    else if(name==='knot'){ [0,3,7,12].forEach((s,i)=>quena(s,t+i*.1,.25,.28)); bombo(t,.5); }
+    else if(name==='win'){ [0,3,5,7,10,12].forEach((s,i)=>quena(s,t+i*.13,i===5?.9:.2,.3)); bombo(t,.6); bombo(t+.65,.6); }
+  };
+  const toggle = () => { on=!on; try{ localStorage.setItem('qn-sound', on?'on':'off'); }catch(e){} on?start():stop(); return on; };
+  return { start, stop, sfx, toggle, get on(){ return on; } };
+})();
+const sfx = Sound.sfx;
+const soundBtn = h(`<button class="sound" aria-pressed="${Sound.on}">${Sound.on?'♪ Sonido: sí':'♪ Sonido: no'}</button>`);
+document.body.appendChild(soundBtn);
+soundBtn.addEventListener('click',()=>{ const on=Sound.toggle(); soundBtn.setAttribute('aria-pressed',on); soundBtn.textContent = on?'♪ Sonido: sí':'♪ Sonido: no'; });
+const unlock = () => { Sound.start(); window.removeEventListener('pointerdown',unlock); window.removeEventListener('keydown',unlock); };
+window.addEventListener('pointerdown',unlock); window.addEventListener('keydown',unlock);
+
+
+/* ---------- Efectos de narrativa ---------- */
+function say(lines){
+  return new Promise(res=>{
+    const v=h(`<div class="dlg-veil"><div class="dlg" role="dialog" aria-live="polite"><span class="who"></span><p class="line"></p><span class="more" aria-hidden="true">▼</span></div></div>`);
+    document.body.appendChild(v);
+    let i=0, typing=null, full='';
+    const p=$('.line',v);
+    const show=()=>{
+      const [who,txt]=lines[i]; $('.who',v).textContent=who; full=txt; p.textContent='';
+      clearInterval(typing); typing=null;
+      if(reduced){ p.textContent=txt; return; }
+      let k=0; typing=setInterval(()=>{ k++; p.textContent=txt.slice(0,k); if(k>=txt.length){ clearInterval(typing); typing=null; } },24);
+    };
+    const end=()=>{ window.removeEventListener('keydown',kd); v.classList.add('out'); setTimeout(()=>v.remove(),260); res(); };
+    const next=()=>{ if(typing){ clearInterval(typing); typing=null; p.textContent=full; return; } i++; if(i>=lines.length) end(); else { sfx('tick'); show(); } };
+    const kd=e=>{ if(e.key==='Enter'||e.code==='Space'){ e.preventDefault(); next(); } };
+    v.addEventListener('click',next); window.addEventListener('keydown',kd);
+    show();
+  });
+}
+function titleCard(top, name, sub){
+  return new Promise(res=>{
+    const v=h(`<div class="tc" role="status"><span class="tc-top">${top}</span><div class="tc-orn"><i></i><b></b><i></i></div><h2 class="tc-name">${name}</h2><p class="tc-sub">“${sub}”</p></div>`);
+    document.body.appendChild(v); sfx('chime');
+    let over=false;
+    const end=()=>{ if(over) return; over=true; v.classList.add('out'); setTimeout(()=>v.remove(),560); res(); };
+    v.addEventListener('click',end); setTimeout(end, reduced?700:2400);
+  });
+}
+function flash(){ const f=h('<div class="flash"></div>'); document.body.appendChild(f); setTimeout(()=>f.remove(),1000); }
+
+/* ---------- Quipu ---------- */
+function quipuSVG(n, big){
+  const W = big?360:200, cords = STAGES.length, gap = (W-40)/(cords-1);
+  let s = `<svg viewBox="0 0 ${W} ${big?150:90}" role="img" aria-label="Quipu con ${n} de ${cords} cuerdas anudadas">`;
+  s += `<path d="M8 12 Q ${W/2} 4 ${W-8} 12" stroke="#c9b48c" stroke-width="5" fill="none" stroke-linecap="round"/>`;
+  STAGES.forEach((st,i)=>{
+    const x = 20+i*gap, on = i<n, len = big?120:72, col = on ? st.color : '#4a5170';
+    s += `<path d="M${x} 11 q ${i%2?3:-3} ${len/2} 0 ${len}" stroke="${col}" stroke-width="${on?4:2.5}" fill="none" stroke-linecap="round"${on?'':' stroke-dasharray="3 4"'}/>`;
+    if(on){ for(let k=0;k<=i;k++){ const y = 26+k*(big?18:11); s += `<ellipse cx="${x}" cy="${y}" rx="${big?6:4.2}" ry="${big?4.5:3.2}" fill="${col}" stroke="#141a2e" stroke-width="1"/>`; } }
+  });
+  return s+'</svg>';
+}
+
+/* ---------- Mapa: perfil de altitud con el chasqui ---------- */
+const X = km => 50 + km/43*700, Y = a => 220 - (a-2400)/1900*185;
+const LBL = { patallacta:['middle',0,30], warmi:['end',-16,4], runku:['end',8,30], sayac:['start',-8,30], machu:['end',12,30] };
+let mapRaf = null;
+function mapSVG(){
+  const d = profile.map((p,i)=>`${i?'L':'M'}${X(p[0]).toFixed(1)} ${Y(p[1]).toFixed(1)}`).join(' ');
+  const F='font-family="Alegreya Sans, sans-serif"';
+  let s = `<svg viewBox="0 0 800 282" aria-label="Mapa del Camino Inca">`;
+  [2500,3000,3500,4000].forEach(a=>{ s+=`<line x1="44" x2="760" y1="${Y(a)}" y2="${Y(a)}" stroke="#323a58"/><text x="40" y="${Y(a)+4}" fill="#8b8aa0" font-size="11" text-anchor="end" ${F}>${a} m</text>`; });
+  [0,10,20,30,40].forEach(k=>{ s+=`<text x="${X(k)}" y="274" fill="#8b8aa0" font-size="11" text-anchor="middle" ${F}>${k} km</text>`; });
+  s += `<path d="${d} L${X(43)} 235 L${X(0)} 235 Z" fill="#2e3552"/>`;
+  // tramo recorrido resaltado
+  s += `<path d="${d}" stroke="#4a5170" stroke-width="3" fill="none" stroke-dasharray="6 5" stroke-linecap="round"/>`;
+  s += `<clipPath id="walked"><rect id="walked-r" x="0" y="0" width="${X(walkFrom ?? curKm())}" height="282"/></clipPath>`;
+  s += `<path d="${d}" stroke="#eba83a" stroke-width="3.5" fill="none" stroke-linecap="round" clip-path="url(#walked)"/>`;
+  [{km:0,t:'Km 82',a:'start',dx:8,dy:22},{km:33,t:'Wiñay Wayna',a:'middle',dx:0,dy:22},{km:41,t:'Intipunku',a:'middle',dx:0,dy:-12}].forEach(l=>{
+    const x=X(l.km), y=Y(altAt(l.km));
+    s+=`<circle cx="${x}" cy="${y}" r="3.5" fill="#8b8aa0"/><text x="${x+l.dx}" y="${y+l.dy}" fill="#9d9cb3" font-size="12" text-anchor="${l.a}" ${F}>${l.t}</text>`; });
+  STAGES.forEach((st,i)=>{
+    const x=X(st.km), y=Y(st.alt), isDone=done.includes(st.id), open=i<=done.length, cur=i===done.length;
+    const [anchor,dx,dy]=LBL[st.id];
+    s += `<g class="node${open?'':' locked'}" data-i="${i}" tabindex="${open?0:-1}" role="button" aria-label="${st.name}${isDone?' (completado)':open?'':' (bloqueado)'}">`;
+    if(cur) s += `<circle cx="${x}" cy="${y}" r="17" fill="none" stroke="${st.color}" stroke-width="2" opacity=".7"><animate attributeName="r" values="12;21;12" dur="2s" repeatCount="indefinite"/></circle>`;
+    s += `<circle cx="${x}" cy="${y}" r="11" fill="${isDone?st.color:open?'#141a2e':'#252c45'}" stroke="${open?st.color:'#4a5170'}" stroke-width="3"/>`;
+    if(isDone) s += `<path d="M${x-5} ${y} l3.5 4 l6.5 -8" stroke="#141a2e" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+    s += `<text x="${x+dx}" y="${y+dy}" fill="${open?'#efe6d2':'#6c7090'}" font-size="15" font-weight="700" text-anchor="${anchor}" font-family="Alegreya SC, serif">${st.name}</text>`;
+    s += `<text x="${x+dx}" y="${y+dy+14}" fill="#8b8aa0" font-size="11" text-anchor="${anchor}" ${F}>${st.alt} m</text></g>`;
+  });
+  s += `<g id="chasqui" pointer-events="none"><g stroke="#efe6d2" stroke-width="2.4" stroke-linecap="round"><line id="lg1" x1="0" y1="-10" x2="-3" y2="0"/><line id="lg2" x1="0" y1="-10" x2="3" y2="0"/></g>
+    <rect x="-5" y="-22" width="10" height="13" rx="1" fill="#d23c55"/><rect x="-5" y="-17" width="10" height="2" fill="#eba83a"/>
+    <circle cy="-26.5" r="4.2" fill="#c9a27a"/><rect x="-5.5" y="-32" width="11" height="2.6" fill="#efe6d2"/>
+    <line x1="5" y1="-19" x2="9" y2="-13" stroke="#eba83a" stroke-width="2"/></g>`;
+  return s+'</svg>';
+}
+function placeChasqui(svg, fromKm, toKm){
+  const g=svg.querySelector('#chasqui'), l1=svg.querySelector('#lg1'), l2=svg.querySelector('#lg2'), clip=svg.querySelector('#walked-r');
+  const at=(km,off)=>g.setAttribute('transform',`translate(${X(km).toFixed(1)} ${(Y(altAt(km))-off).toFixed(1)}) scale(1.3)`);
+  const offFor = km => (km===0 ? 3 : 12);
+  if(fromKm===null || fromKm===toKm || reduced){ at(toKm, offFor(toKm)); clip.setAttribute('width', X(toKm)); return; }
+  at(fromKm, offFor(fromKm));
+  const dur=Math.min(2800, 800+(toKm-fromKm)*170), t0=performance.now()+350;
+  const step=t=>{
+    const p=Math.max(0,Math.min(1,(t-t0)/dur)), e=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2, km=fromKm+(toKm-fromKm)*e;
+    const near=Math.min(km-fromKm,toKm-km), base = near===km-fromKm ? offFor(fromKm) : offFor(toKm);
+    at(km, base*Math.max(0,1-near/1.2) + 2);
+    clip.setAttribute('width', X(km));
+    const sw = p>0&&p<1 ? Math.sin(t/65)*3.5 : 3; l1.setAttribute('x2',-sw); l2.setAttribute('x2',sw);
+    if(p<1) mapRaf=requestAnimationFrame(step); else { at(toKm, offFor(toKm)); l1.setAttribute('x2',-3); l2.setAttribute('x2',3); }
+  };
+  mapRaf=requestAnimationFrame(step);
+}
+
+/* ---------- Portada ---------- */
+function coverSVG(){
+  const stars = Array.from({length:40},(_,i)=>{ const x=(i*197)%800, y=(i*71)%200, r=(i%3)*.5+.6; return `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity="${.25+(i%4)*.15}"/>`; }).join('');
+  return `<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2150"/><stop offset=".42" stop-color="#5a4277"/><stop offset=".68" stop-color="#d0805e"/><stop offset="1" stop-color="#f0b46a"/></linearGradient>
+      <radialGradient id="glow"><stop offset="0" stop-color="#ffe2a0" stop-opacity=".95"/><stop offset="1" stop-color="#ffe2a0" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="800" height="600" fill="url(#sky)"/>${stars}
+    <circle cx="470" cy="300" r="170" fill="url(#glow)"/><circle cx="470" cy="300" r="36" fill="#ffd98a"/>
+    <path d="M0 350 L80 318 L150 336 L240 280 L320 318 L400 292 L520 300 L600 252 L690 298 L800 268 L800 600 L0 600Z" fill="#6a4d78"/>
+    <g class="mist b"><ellipse cx="520" cy="345" rx="300" ry="20" fill="#f8dccb" opacity=".2"/></g>
+    <path d="M0 430 L120 392 L220 410 L330 382 L420 362 L500 332 L538 252 L560 212 L584 250 L612 322 L662 360 L760 380 L800 372 L800 600 L0 600Z" fill="#3a2c52"/>
+    <path d="M290 600 L330 402 L382 374 L520 366 L562 384 L602 424 L650 600Z" fill="#2a2140"/>
+    <g stroke="#4c3c5e" stroke-width="2.5">${[388,398,408,418,430].map((y,i)=>`<line x1="${350-i*6}" y1="${y}" x2="${560+i*8}" y2="${y}"/>`).join('')}</g>
+    <g fill="#4e3d5c">${[392,410,428,446,470,488,506].map((x,i)=>`<rect x="${x}" y="${356-(i%3)*3}" width="14" height="${10+(i%3)*3}"/><path d="M${x-2} ${356-(i%3)*3} L${x+7} ${349-(i%3)*3} L${x+16} ${356-(i%3)*3}Z"/>`).join('')}</g>
+    <g class="mist"><ellipse cx="300" cy="440" rx="330" ry="26" fill="#f8dccb" opacity=".16"/><ellipse cx="660" cy="420" rx="230" ry="18" fill="#f8dccb" opacity=".13"/></g>
+    <path d="M0 600 L0 418 L90 448 L200 520 L262 600Z" fill="#17132a"/><path d="M800 600 L800 436 L700 468 L622 540 L592 600Z" fill="#17132a"/>
+    <g stroke="#1d1734" stroke-width="2.4" fill="none" stroke-linecap="round"><path d="M190 170 q8 -7 15 0 q7 -7 15 0"/><path d="M236 196 q6 -5 11 0 q5 -5 11 0"/></g>
+  </svg>`;
+}
+function showCover(){
+  stopGame(); stopClock(); cancelAnimationFrame(mapRaf);
+  const n=done.length;
+  const el=h(`<section class="screen"><div class="cover">${coverSVG()}<div class="cover-ui">
+      <span class="label">Qhapaq Ñan · 43 km · 4215 m</span>
+      <h1>Rumbo a<br>Machu Picchu</h1>
+      ${reto?`<div class="reto"><span class="label">Reto recibido</span><b>${reto.name} hizo ${fmt(reto.ms)} en modo ${DIFFS[reto.diff].name}</b><span class="small">¿Puedes superarlo?</span></div>`:''}
+      ${n===0?`<div class="seg" role="group" aria-label="Dificultad">${Object.entries(DIFFS).map(([k,v])=>`<button class="seg-b${k===diff?' on':''}" data-d="${k}" aria-pressed="${k===diff}">${v.name}</button>`).join('')}</div>`:''}
+      <button class="btn big" id="start">${n===0?(reto?'Aceptar el reto':'Empezar'):n<STAGES.length?'Continuar':'Ver mi quipu'}</button>
+      ${n>0?`<button class="btn ghost" id="new">Nueva caminata</button>`:''}
+      ${best[diff]!=null?`<span class="small">Mejor tiempo en ${D().name}: <b class="num">${fmt(best[diff])}</b></span>`:''}
+    </div></div></section>`);
+  app.replaceChildren(el);
+  el.querySelectorAll('.seg-b').forEach(b=>b.addEventListener('click',()=>{ diff=b.dataset.d; save(); showCover(); }));
+  $('#start',el).addEventListener('click', async ()=>{
+    if(n===0){
+      await say([[GUIDE,'¡Despierta, chasqui! El Inti ya asoma tras los Apus.'],
+                 [GUIDE,'Lleva este quipu hasta Machu Picchu.'],
+                 [GUIDE,'En cada parada del camino, anuda un nuevo saber.']]);
+    }
+    showMap();
+  });
+  $('#new',el)?.addEventListener('click',resetRun);
+  window.scrollTo({top:0});
+}
+
+/* ---------- Mapa ---------- */
+function showMap(){
+  stopGame(); stopClock(); cancelAnimationFrame(mapRaf);
+  const n = done.length, next = STAGES[n];
+  const from = walkFrom; walkFrom = null;
+  const el = h(`<section class="screen">
+    <div class="bar-top">
+      <div><span class="label">Qhapaq Ñan</span><h1>Rumbo a Machu Picchu</h1></div>
+      <div class="stats"><span class="pill sun num" title="Tiempo">⏱ ${fmt(elapsed)}</span><span class="pill">${D().name}</span>${reto&&reto.diff===diff?`<span class="pill" title="Reto">⚔ ${reto.name} ${fmt(reto.ms)}</span>`:''}<div class="quipu-mini">${quipuSVG(n)}</div></div>
+    </div>
+    <div class="map">${mapSVG()}</div>
+    ${next ? `<div class="next"><div><span class="label">Siguiente · km ${next.km} · ${next.alt} m</span><h2>${next.name}</h2></div><button class="btn big" id="go">Ir</button></div>`
+      : `<div class="next"><div><span class="label">Quipu completo</span><h2>Machu Picchu</h2></div><div class="row"><button class="btn big" id="fin">Ver final</button><button class="btn ghost" id="reset">Nueva caminata</button></div></div>`}
+  </section>`);
+  app.replaceChildren(el);
+  placeChasqui($('.map svg',el), from, curKm());
+  el.querySelectorAll('.node').forEach(g=>{
+    const go = ()=>{ const i=+g.dataset.i; if(i<=done.length) startStage(i); };
+    g.addEventListener('click', go);
+    g.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); }});
+  });
+  $('#go',el)?.addEventListener('click',()=>startStage(n));
+  $('#fin',el)?.addEventListener('click',showFinale);
+  $('#reset',el)?.addEventListener('click',resetRun);
+  window.scrollTo({top:0});
+}
+
+/* ---------- Desafío ---------- */
+let busy=false;
+async function startStage(i){
+  if(busy) return; busy=true;
+  const st = STAGES[i];
+  try{
+    cancelAnimationFrame(mapRaf);
+    await say([[GUIDE, st.line]]);
+    await titleCard(`Km ${st.km} · ${st.alt} m`, st.name, st.meaning);
+  } finally { busy=false; }
+  const el = h(`<section class="screen">
+    <div class="game-head">
+      <div><span class="label">Km ${st.km} · ${st.alt} m · ${D().name}</span><h2>${st.name}</h2></div>
+      <div class="head-right"><span class="clock num" id="clock">${fmt(elapsed)}</span><button class="btn ghost" id="back">← Mapa</button></div>
+    </div>
+    <span class="hint">${st.hint}</span>
+    <div class="stage" id="stage"></div>
+  </section>`);
+  app.replaceChildren(el);
+  $('#back',el).addEventListener('click',showMap);
+  const replay = done.includes(st.id);
+  if(!replay) startClock($('#clock',el)); else $('#clock',el).textContent='Repaso';
+  let finished=false;
+  const win = async ()=>{
+    if(finished) return; finished=true;
+    stopClock();
+    const first = !done.includes(st.id);
+    if(first){
+      walkFrom = curKm();
+      done.push(st.id);
+      if(done.length===STAGES.length){ lastFinal=elapsed; if(best[diff]==null||elapsed<best[diff]) best[diff]=elapsed; }
+      save();
+    }
+    flash(); await wait(reduced?50:380);
+    showSaber(st);
+  };
+  cleanup = GAMES[st.game]($('#stage',el), win);
+  window.scrollTo({top:0});
+}
+
+function showSaber(st){
+  stopGame();
+  const n = done.length, last = n===STAGES.length && st.id==='machu';
+  const col = st.color==='#efe6d2' ? '#8a7a5c' : st.color;
+  const v = h(`<div class="veil" role="dialog" aria-modal="true" aria-labelledby="st-t">
+    <div class="story"><div class="tocapu"></div><div class="in">
+      <span class="label">Saber anudado · ${n}/${STAGES.length}</span>
+      <svg class="knot" width="44" height="52" viewBox="0 0 44 52" aria-hidden="true"><path d="M22 0 V52" stroke="${col}" stroke-width="4"/><ellipse cx="22" cy="24" rx="11" ry="8" fill="${col}"/></svg>
+      <h2 id="st-t">${st.name}</h2>
+      <p class="qz">“${st.meaning}”</p>
+      <p>${st.fact}</p>
+      <button class="btn" id="cont">${last?'Entrar a Machu Picchu':'Seguir el camino'}</button>
+    </div><div class="tocapu"></div></div></div>`);
+  document.body.appendChild(v);
+  sfx(last?'win':'knot');
+  const b = $('#cont',v); b.focus();
+  b.addEventListener('click', async ()=>{
+    v.remove();
+    if(last){ await say([[GUIDE,'Lo lograste, chasqui. Machu Picchu te recibe.']]); showFinale(); }
+    else showMap();
+  });
+}
+
+/* ---------- Final ---------- */
+function showFinale(){
+  stopGame(); stopClock(); cancelAnimationFrame(mapRaf);
+  const t = lastFinal ?? elapsed;
+  const textFor = name => `Te reto en Rumbo a Machu Picchu: hice ${fmt(t)} en modo ${D().name} ⏱️ Crucé Warmiwañusca a 4215 m y llegué a Machu Picchu. ¿Puedes superarme? ${retoLink(name,t)}`;
+  let shareText = textFor(myName);
+  let verdict = '';
+  if(reto && reto.diff===diff){
+    const d = reto.ms - t;
+    verdict = d>0 ? `<div class="verdict win"><span class="label">Reto de ${reto.name}</span><b>¡Le ganaste por ${fmt(d)}!</b></div>`
+            : d===0 ? `<div class="verdict"><span class="label">Reto de ${reto.name}</span><b>¡Empate exacto!</b></div>`
+            : `<div class="verdict lose"><span class="label">Reto de ${reto.name}</span><b>${reto.name} sigue ganando por ${fmt(-d)}</b><span class="small">Intenta un mejor tiempo.</span></div>`;
+  }
+  const el = h(`<section class="screen">
+    <div class="finale">
+      <svg viewBox="0 0 800 300" aria-hidden="true">
+        <circle cx="560" cy="150" r="46" fill="#ffd27a"><animate attributeName="cy" from="230" to="120" dur="3s" fill="freeze"/></circle>
+        <path d="M0 300 L0 210 L120 170 L230 200 L330 120 L420 95 L470 70 L520 120 L600 160 L700 140 L800 180 L800 300Z" fill="#3a2a3e"/>
+        <path d="M380 210 L420 150 L470 105 L520 150 L560 210Z" fill="#2a2032"/>
+        <g fill="#5b4a52">${Array.from({length:9},(_,i)=>`<rect x="${250+i*26}" y="${238-(i%3)*6}" width="20" height="${14+(i%3)*6}"/>`).join('')}</g>
+        <path d="M0 300 L0 262 L800 252 L800 300Z" fill="#241a2a"/>
+      </svg>
+      <div class="over"><span class="label" style="color:#f3d7a0">Intipunku · amanecer</span><h1>Machu Picchu</h1></div>
+    </div>
+    <div class="bar-top">
+      <div><h2>Tu quipu está completo</h2><p class="small">43 km · 4215 m · 5 saberes anudados</p></div>
+      <div class="quipu-big">${quipuSVG(STAGES.length,true)}</div>
+    </div>
+    ${verdict}
+    <div class="share">
+      <div><span class="label">Tu tiempo</span><div class="time num">${fmt(t)}</div><span class="label">${D().name}${best[diff]!=null?` · Mejor ${fmt(best[diff])}`:''}</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+        <label class="label" for="pname">Tu nombre para el reto</label>
+        <input id="pname" class="name-in" maxlength="14" autocomplete="nickname" placeholder="Chasqui" value="${myName}">
+        <p class="share-text" id="stxt">${shareText}</p>
+        <div class="row">
+          <button class="btn" id="copy">Copiar</button>
+          <a class="btn wa" id="wa" href="https://wa.me/?text=${encodeURIComponent(shareText)}" target="_blank" rel="noopener">WhatsApp</a>
+          <span class="msg" id="cmsg" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
+    <div class="vote">
+      <div><span class="label">¿Te gustó?</span><h2>Vota por Rumbo a Machu Picchu</h2></div>
+      ${VOTE_URL?`<a class="btn" href="${VOTE_URL}" target="_blank" rel="noopener">Votar ahora</a>`:''}
+    </div>
+    <div class="row"><button class="btn ghost" id="m">Ver el mapa</button><button class="btn ghost" id="r">Intentar un mejor tiempo</button></div>
+    <p class="credits">Prototipo para hackatón. Altitudes y distancias aproximadas.</p>
+  </section>`);
+  app.replaceChildren(el);
+  $('#m',el).addEventListener('click',showMap);
+  $('#r',el).addEventListener('click',resetRun);
+  const pin=$('#pname',el);
+  pin.addEventListener('input',()=>{
+    const c=cleanName(pin.value); if(c!==pin.value) pin.value=c;
+    myName=c; try{ localStorage.setItem('qn-name',c); }catch(e){}
+    shareText=textFor(c); $('#stxt',el).textContent=shareText; $('#wa',el).href='https://wa.me/?text='+encodeURIComponent(shareText);
+  });
+  $('#copy',el).addEventListener('click',()=>{
+    const m=$('#cmsg',el);
+    const fallback=()=>{ const r=document.createRange(); r.selectNodeContents($('#stxt',el)); const s=getSelection(); s.removeAllRanges(); s.addRange(r); m.className='msg'; m.textContent='Texto seleccionado: cópialo con Ctrl+C.'; };
+    try{ navigator.clipboard.writeText(shareText).then(()=>{ m.className='msg good'; m.textContent='Copiado.'; }, fallback); }catch(e){ fallback(); }
+  });
+  window.scrollTo({top:0});
+}
+
+/* ================= MINIJUEGOS ================= */
+const GAMES = {};
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+/* 1. Andenes: pisos ecológicos de Pulgar Vidal */
+GAMES.terraces = (root, win) => {
+  const zones = [
+    {id:'puna', name:'Puna', range:'4000–4800 m'},
+    {id:'suni', name:'Suni', range:'3500–4000 m'},
+    {id:'quechua', name:'Quechua', range:'2300–3500 m'},
+  ];
+  const all = [
+    {n:'Maíz', z:'quechua', hint:'El maíz necesita el clima templado de los valles.'},
+    {n:'Maca', z:'puna', hint:'La maca resiste las heladas de las zonas más altas.'},
+    {n:'Quinua', z:'suni', hint:'La quinua prefiere la zona fría, pero no la más alta.'},
+    {n:'Calabaza', z:'quechua', hint:'La calabaza necesita calor: búscale un andén bajo.'},
+    {n:'Oca', z:'suni', hint:'La oca crece en tierras frías, por debajo de la puna.'},
+    {n:'Papa amarga', z:'puna', hint:'La papa amarga se cultiva en lo más alto, donde hiela.'},
+    {n:'Olluco', z:'suni', hint:'El olluco se da en tierras frías de altura media.'},
+    {n:'Cañihua', z:'puna', hint:'La cañihua aguanta el frío extremo de la puna.'},
+    {n:'Frijol', z:'quechua', hint:'El frijol crece junto al maíz en los valles templados.'},
+  ];
+  const crops = shuffle(all.slice(0, D().crops));
+  let sel = null;
+  root.innerHTML = `<div class="terraces">${zones.map(z=>`<button class="terrace" data-z="${z.id}"><span class="tag"><b>${z.name}</b><small class="num">${z.range}</small></span><span class="soil"></span></button>`).join('')}</div>
+    <div class="chips">${crops.map((c,i)=>`<button class="chip" data-i="${i}">${c.n}</button>`).join('')}</div>
+    <p class="msg" aria-live="polite">Elige un cultivo.${D().hints?'':' En este modo no hay pistas.'}</p>`;
+  const msg = $('.msg',root); let placed = 0;
+  root.querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>{
+    root.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel'));
+    b.classList.add('sel'); sel=+b.dataset.i; msg.className='msg'; msg.textContent=`¿Dónde sembrarás ${crops[sel].n.toLowerCase()}?`;
+  }));
+  root.querySelectorAll('.terrace').forEach(t=>t.addEventListener('click',()=>{
+    if(sel===null){ msg.className='msg'; msg.textContent='Primero elige un cultivo.'; return; }
+    const c = crops[sel];
+    if(c.z===t.dataset.z){
+      $('.soil',t).appendChild(h(`<span class="planted">${c.n}</span>`));
+      root.querySelector(`.chip[data-i="${sel}"]`).remove(); sel=null; placed++;
+      msg.className='msg good'; msg.textContent='¡Bien sembrado!'; sfx('good');
+      if(placed===crops.length) setTimeout(win,600);
+    } else {
+      sfx('bad');
+      t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake');
+      msg.className='msg bad'; msg.textContent=(D().hints?c.hint:'Ese no es su piso ecológico.')+penalize();
+    }
+  }));
+  return ()=>{};
+};
+
+/* 2. Subida a Warmiwañusca: ritmo y oxígeno */
+GAMES.climb = (root, win) => {
+  const START=3000, GOAL=4215, P=D().climb;
+  root.innerHTML = `<div class="climb">
+    <svg viewBox="0 0 400 260" aria-hidden="true">
+      <path d="M0 260 L0 240 L60 230 L380 30 L400 40 L400 260Z" fill="#2e3552"/>
+      <path d="M300 82 L380 30 L400 40 L360 60Z" fill="#efe6d2" opacity=".85"/>
+      <path d="M20 236 L380 32" stroke="#c9b48c" stroke-width="2" stroke-dasharray="5 6"/>
+      <text x="372" y="22" fill="#eba83a" font-size="13" text-anchor="end" font-family="Alegreya SC, serif">4215 m</text>
+      <g id="hiker"><circle r="9" fill="#d23c55"/><circle r="3" cy="-14" fill="#efe6d2"/></g>
+    </svg>
+    <div class="gauges">
+      <div><span class="label">Altitud</span><div class="big num" id="alt">3000 m</div></div>
+      <div><span class="label">Oxígeno</span><div class="bar"><i id="oxy"></i></div></div>
+      <div><span class="label">Hojas de coca</span><div class="chips" id="coca"></div></div>
+      <button class="btn hold" id="hold">Mantén para subir</button>
+    </div></div>
+    <p class="msg" aria-live="polite">Sube a ritmo: avanza y descansa.</p>`;
+  const altEl=$('#alt',root), oxy=$('#oxy',root), hiker=$('#hiker',root), btn=$('#hold',root), msg=$('.msg',root), cocaEl=$('#coca',root);
+  let alt=START, o=100, holding=false, stun=0, last=performance.now(), raf, coca=P.coca, finished=false;
+  const renderCoca=()=>{ cocaEl.innerHTML = coca? Array.from({length:coca},()=>`<button class="chip coca">Mascar coca</button>`).join('') : '<small style="color:var(--wool-dim)">Ya no te quedan.</small>';
+    cocaEl.querySelectorAll('.coca').forEach(b=>b.addEventListener('click',()=>{ coca--; o=Math.min(100,o+45); sfx('good'); msg.className='msg good'; msg.textContent='La coca te ayuda con la altura.'; renderCoca(); })); };
+  renderCoca();
+  const down=e=>{ e.preventDefault(); holding=true; btn.classList.add('on'); };
+  const up=()=>{ holding=false; btn.classList.remove('on'); };
+  btn.addEventListener('pointerdown',down); btn.addEventListener('pointerup',up); btn.addEventListener('pointerleave',up); btn.addEventListener('pointercancel',up);
+  btn.addEventListener('contextmenu',e=>e.preventDefault());
+  const kd=e=>{ if(e.code==='Space'){ e.preventDefault(); if(!e.repeat) down(e);} }, ku=e=>{ if(e.code==='Space') up(); };
+  window.addEventListener('keydown',kd); window.addEventListener('keyup',ku);
+  const loop=t=>{
+    const dt=Math.min(.05,(t-last)/1000); last=t;
+    if(stun>0){ stun-=dt; }
+    else if(holding){ alt+=P.up*dt; o-=P.drain*dt; if(o<=0){ o=35; alt=Math.max(START,alt-P.drop); stun=1.2; up(); sfx('hit'); msg.className='msg bad'; msg.textContent='¡Soroche! Te mareaste y retrocediste. Descansa antes de que el oxígeno se agote.'; } }
+    else { o=Math.min(100,o+P.rec*dt); }
+    const f=Math.min(1,(alt-START)/(GOAL-START));
+    hiker.setAttribute('transform',`translate(${20+f*360} ${236-f*204-10})`);
+    altEl.textContent=Math.round(Math.min(alt,GOAL))+' m';
+    oxy.style.width=o+'%'; oxy.style.background = o<30?'var(--cochineal)':'var(--water)';
+    if(alt>=GOAL && !finished){ finished=true; msg.className='msg good'; msg.textContent='¡Llegaste al paso de Warmiwañusca!'; setTimeout(win,700); return; }
+    raf=requestAnimationFrame(loop);
+  };
+  raf=requestAnimationFrame(loop);
+  return ()=>{ cancelAnimationFrame(raf); window.removeEventListener('keydown',kd); window.removeEventListener('keyup',ku); };
+};
+
+/* 3. Chasqui: corredor con rocas y cóndores */
+GAMES.runner = (root, win) => {
+  const P=D().run;
+  root.classList.add('runner');
+  root.innerHTML = `<div class="hud"><span><span class="label">Vidas</span> <b id="lives" class="num"></b></span><span><span class="label">Hasta el relevo</span> <b id="dist" class="num">100%</b></span></div>
+    <canvas aria-label="Juego del chasqui: toca para saltar"></canvas>
+    <p class="msg" aria-live="polite">Toca el camino o pulsa Espacio para empezar.</p>`;
+  const cv=$('canvas',root), ctx=cv.getContext('2d'), msg=$('.msg',root), livesEl=$('#lives',root), distEl=$('#dist',root);
+  const H=220, G=180, GOALT=P.dur;
+  let W=600, dpr=1;
+  const size=()=>{ dpr=window.devicePixelRatio||1; W=cv.clientWidth||600; cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); };
+  size(); window.addEventListener('resize',size);
+  let state='ready', py=G, vy=0, obs=[], spawn=1, t=0, clockT=0, lives=P.lives, inv=0, raf, last=performance.now(), scroll=0, lastType='';
+  const showLives=()=>{ livesEl.textContent='●'.repeat(Math.max(0,lives))+'○'.repeat(P.lives-Math.max(0,lives)); };
+  showLives();
+  const reset=()=>{ py=G; vy=0; obs=[]; spawn=1; t=0; lives=P.lives; inv=0; lastType=''; showLives(); };
+  const jump=()=>{
+    if(state==='ready'||state==='over'){ reset(); state='run'; msg.className='msg'; msg.textContent='¡Corre, chasqui! Salta las rocas, pero no saltes bajo los cóndores.'; return; }
+    if(state==='run' && py>=G-0.5){ vy=-600; sfx('jump'); }
+  };
+  const kd=e=>{ if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); jump(); } };
+  cv.addEventListener('pointerdown',e=>{ e.preventDefault(); jump(); }); window.addEventListener('keydown',kd);
+
+  const condor=(x,y,s,flap)=>{
+    const f=Math.sin(flap)*9;
+    ctx.save(); ctx.translate(x,y); ctx.scale(s,s);
+    ctx.fillStyle='#0b0d16';
+    for(const side of [-1,1]){
+      ctx.beginPath(); ctx.moveTo(0,0);
+      ctx.quadraticCurveTo(side*14,-7-f,side*30,-3-f*1.4);
+      ctx.lineTo(side*27,0-f); ctx.lineTo(side*29,2-f*.9); ctx.lineTo(side*24,3-f*.6); ctx.lineTo(side*25,5-f*.4); ctx.lineTo(side*12,5);
+      ctx.closePath(); ctx.fill();
+      // franja blanca del ala
+      ctx.strokeStyle='#cfc8b8'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(side*6,1); ctx.quadraticCurveTo(side*14,-3-f*.6,side*20,-1-f); ctx.stroke();
+    }
+    ctx.fillStyle='#0b0d16'; ctx.beginPath(); ctx.ellipse(1,3,10,5,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(9,3); ctx.lineTo(16,0); ctx.lineTo(16,7); ctx.fill(); // cola
+    ctx.fillStyle='#efe6d2'; ctx.beginPath(); ctx.arc(-9,2,3.6,0,7); ctx.fill(); // collar blanco
+    ctx.fillStyle='#9a6b63'; ctx.beginPath(); ctx.arc(-13,2,2.8,0,7); ctx.fill(); // cabeza
+    ctx.restore();
+  };
+
+  const draw=()=>{
+    // cielo del amanecer para que los cóndores se vean como siluetas
+    const sky=ctx.createLinearGradient(0,0,0,G);
+    sky.addColorStop(0,'#3b4378'); sky.addColorStop(.6,'#8a6a8c'); sky.addColorStop(1,'#d9906a');
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+    // cóndores lejanos planeando
+    const now=performance.now()/1000;
+    condor(W*.72+Math.cos(now*.35)*70, 38+Math.sin(now*.7)*10, .55, now*1.2);
+    condor(W*.35+Math.cos(now*.28+2)*60, 30+Math.sin(now*.5+1)*8, .4, now*1.1+1);
+    // montañas
+    ctx.fillStyle='#252c45'; ctx.beginPath(); ctx.moveTo(0,G);
+    for(let x=0;x<=W+40;x+=40){ const k=(x+scroll*.2)/90; ctx.lineTo(x,G-40-Math.abs(Math.sin(k))*55-Math.sin(k*2.3)*12); }
+    ctx.lineTo(W,G); ctx.fill();
+    // camino de piedra
+    ctx.fillStyle='#5b4a3a'; ctx.fillRect(0,G,W,H-G);
+    ctx.fillStyle='#6e5b48'; for(let x=-(scroll%34);x<W;x+=34){ ctx.fillRect(x,G+6,26,8); ctx.fillRect(x+13,G+20,26,8); }
+    // obstáculos
+    obs.forEach(o=>{
+      if(o.type==='rock'){ ctx.fillStyle='#8a8070'; ctx.beginPath(); ctx.moveTo(o.x,G); ctx.lineTo(o.x+o.w*.2,G-o.h); ctx.lineTo(o.x+o.w*.75,G-o.h*.85); ctx.lineTo(o.x+o.w,G); ctx.fill(); }
+      else { ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(o.x+o.w/2,G+4,20,3,0,0,7); ctx.fill(); condor(o.x+o.w/2,(o.top+o.bot)/2,1,t*9+o.ph); }
+    });
+    // chasqui
+    const blink = inv>0 && Math.floor(inv*10)%2===0;
+    if(!blink){
+      const x=70, step=Math.sin(t*18)*6*(py>=G-0.5?1:0);
+      ctx.strokeStyle='#efe6d2'; ctx.lineWidth=3; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(x,py-18); ctx.lineTo(x-6+step,py); ctx.moveTo(x,py-18); ctx.lineTo(x+6-step,py); ctx.stroke();
+      ctx.fillStyle='#d23c55'; ctx.fillRect(x-7,py-36,14,20);
+      ctx.fillStyle='#eba83a'; ctx.fillRect(x-7,py-28,14,3);
+      ctx.fillStyle='#c9a27a'; ctx.beginPath(); ctx.arc(x,py-42,6,0,7); ctx.fill();
+      ctx.fillStyle='#efe6d2'; ctx.fillRect(x-8,py-49,16,4);
+      ctx.strokeStyle='#eba83a'; ctx.beginPath(); ctx.moveTo(x+7,py-30); ctx.lineTo(x+12,py-22); ctx.stroke();
+    }
+    if(state==='ready'||state==='over'){
+      ctx.fillStyle='rgba(20,26,46,.6)'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#efe6d2'; ctx.font='700 22px "Alegreya SC", serif'; ctx.textAlign='center';
+      ctx.fillText(state==='ready'?'Toca para correr':'Perdiste el mensaje. Toca para reintentar', W/2, 90);
+      ctx.font='500 15px "Alegreya Sans", sans-serif'; ctx.fillStyle='#b9b2a3';
+      ctx.fillText('Salta las rocas · No saltes cuando un cóndor vuela bajo', W/2, 118);
+    }
+  };
+  const loop=n=>{
+    const dt=Math.min(.04,(n-last)/1000); last=n;
+    if(state==='run'){
+      t+=dt; const sp=P.sp+t*P.acc; scroll+=sp*dt;
+      vy+=1700*dt; py=Math.min(G,py+vy*dt); if(py>=G) vy=0;
+      spawn-=dt;
+      if(spawn<=0 && t<GOALT-1.5){
+        if(t>3 && lastType!=='condor' && Math.random()<P.condor){
+          obs.push({type:'condor', x:W+30, w:46, top:G-110, bot:G-84, ph:Math.random()*6}); lastType='condor'; spawn=1.15+Math.random()*.8;
+        } else {
+          const tall=Math.random()<.3; obs.push({type:'rock', x:W+20, w:tall?30:26+Math.random()*10, h:tall?42:22+Math.random()*12}); lastType='rock'; spawn=.85+Math.random()*.9;
+        }
+      }
+      obs.forEach(o=>o.x-=sp*dt); obs=obs.filter(o=>o.x>-60);
+      if(inv>0) inv-=dt;
+      else for(const o of obs){
+        const hx = 77>o.x+6 && 63<o.x+o.w-6;
+        const hit = o.type==='rock' ? (hx && py>G-o.h+4) : (hx && py-49<o.bot && py>o.top);
+        if(hit){ lives--; inv=1.2; sfx('hit'); showLives(); msg.className='msg bad';
+          msg.textContent = o.type==='rock' ? '¡Tropezaste con una roca!' : '¡Chocaste con un cóndor! Cuando vuele bajo, quédate en el suelo.'; break; }
+      }
+      distEl.textContent=Math.max(0,Math.round(100-t/GOALT*100))+'%';
+      if(lives<=0){ state='over'; msg.className='msg bad'; msg.textContent='Sin vidas. Inténtalo de nuevo.'; }
+      if(t>=GOALT){ state='win'; draw(); msg.className='msg good'; msg.textContent='¡Mensaje entregado al siguiente chasqui!'; setTimeout(win,700); return; }
+    }
+    draw(); raf=requestAnimationFrame(loop);
+  };
+  raf=requestAnimationFrame(loop);
+  return ()=>{ cancelAnimationFrame(raf); window.removeEventListener('keydown',kd); window.removeEventListener('resize',size); };
+};
+
+/* 4. Canales de Sayacmarca: un camino de agua nuevo en cada partida */
+GAMES.pipes = (root, win) => {
+  const n=D().pipes, N=1,E=2,S=4,Wb=8, rot=m=>((m<<1)|(m>>3))&15;
+  const DIR={1:[-1,0],2:[0,1],4:[1,0],8:[0,-1]};
+  const between=(a,b)=>{ const dr=b[0]-a[0], dc=b[1]-a[1]; return dr===-1?N:dr===1?S:dc===1?E:Wb; };
+  // Camino aleatorio sin cruces desde la esquina superior izquierda hasta la inferior derecha
+  const findPath=()=>{
+    let best=null;
+    for(let a=0;a<60;a++){
+      const seen=new Set(['0,0']), path=[[0,0]]; let steps=0;
+      const dfs=(r,c)=>{ if(++steps>5000) return false; if(r===n-1&&c===n-1) return true;
+        for(const b of shuffle([N,E,S,Wb])){ const [dr,dc]=DIR[b], nr=r+dr, nc=c+dc, k=nr+','+nc;
+          if(nr<0||nc<0||nr>=n||nc>=n||seen.has(k)) continue;
+          seen.add(k); path.push([nr,nc]); if(dfs(nr,nc)) return true; path.pop(); seen.delete(k); }
+        return false; };
+      if(dfs(0,0) && (!best || path.length>best.length)) best=path.slice();
+      if(best && best.length>=Math.ceil(n*n*.55)) break;
+    }
+    if(!best){ best=[]; for(let r=0;r<n;r++) for(let c=0;c<n;c++) best.push([r, r%2?n-1-c:c]); if(n%2===0) best.push(...[]); }
+    return best;
+  };
+  const path=findPath(), sol={};
+  path.forEach((p,k)=>{
+    const a = k===0 ? Wb : between(p,path[k-1]);
+    const b = k===path.length-1 ? E : between(p,path[k+1]);
+    sol[p[0]+','+p[1]] = a|b;
+  });
+  const filler=[5,10,3,6,12,9].concat(D().tees?[7,11,13,14,7,13]:[]);
+  const grid=[];
+  for(let r=0;r<n;r++){ grid[r]=[]; for(let c=0;c<n;c++){
+    const key=r+','+c; let m = sol[key] ?? filler[Math.floor(Math.random()*filler.length)];
+    const turns = sol[key]!==undefined ? 1+Math.floor(Math.random()*3) : Math.floor(Math.random()*4);
+    for(let k=0;k<turns;k++) m=rot(m);
+    grid[r][c]=m; } }
+  root.innerHTML = `<div class="pipe-legend" style="width:min(${n*78}px,100%)"><span>→ Manantial</span><span class="num" id="moves">Giros: 0</span><span>Fuente →</span></div>
+    <div class="grid" style="grid-template-columns:repeat(${n},1fr);width:min(${n*78}px,100%)">${Array.from({length:n*n},(_,i)=>`<button class="cell" data-i="${i}" aria-label="Piedra ${i+1}, tocar para girar"></button>`).join('')}</div>
+    <p class="msg" aria-live="polite">El canal cambia en cada partida. El agua entra arriba a la izquierda y sale abajo a la derecha.</p>`;
+  const cells=[...root.querySelectorAll('.cell')], msg=$('.msg',root), movesEl=$('#moves',root); let won=false, moves=0;
+  const flow=()=>{
+    const wet=new Set(); if(!(grid[0][0]&Wb)) return {wet,ok:false};
+    const q=[[0,0]]; wet.add('0,0');
+    const dirs=[[N,-1,0,S],[E,0,1,Wb],[S,1,0,N],[Wb,0,-1,E]];
+    while(q.length){ const [r,c]=q.shift(); for(const [b,dr,dc,opp] of dirs){ if(!(grid[r][c]&b)) continue; const nr=r+dr,nc=c+dc; if(nr<0||nc<0||nr>=n||nc>=n) continue; if(!(grid[nr][nc]&opp)) continue; const k=nr+','+nc; if(!wet.has(k)){ wet.add(k); q.push([nr,nc]); } } }
+    const end=(n-1)+','+(n-1);
+    return {wet, ok: wet.has(end) && (grid[n-1][n-1]&E)};
+  };
+  const render=()=>{
+    const {wet,ok}=flow();
+    cells.forEach((b,i)=>{ const r=Math.floor(i/n),c=i%n,m=grid[r][c],w=wet.has(r+','+c);
+      const col=w?'#5bb3d6':'#8a8070', seg=[];
+      if(m&N) seg.push('M50 50 V0'); if(m&E) seg.push('M50 50 H100'); if(m&S) seg.push('M50 50 V100'); if(m&Wb) seg.push('M50 50 H0');
+      let extra='';
+      if(r===0&&c===0) extra+=`<path d="M0 38 L0 62" stroke="#5bb3d6" stroke-width="8"/>`;
+      if(r===n-1&&c===n-1) extra+=`<path d="M100 38 L100 62" stroke="#eba83a" stroke-width="8"/>`;
+      b.innerHTML=`<svg viewBox="0 0 100 100"><rect width="100" height="100" fill="${w?'#2f4250':'#3b3a3a'}"/><path d="${seg.join(' ')}" stroke="#2a2626" stroke-width="30" stroke-linecap="square" fill="none"/><path d="${seg.join(' ')}" stroke="${col}" stroke-width="18" stroke-linecap="square" fill="none"/><circle cx="50" cy="50" r="9" fill="${col}"/>${extra}</svg>`;
+    });
+    movesEl.textContent='Giros: '+moves;
+    if(ok && !won){ won=true; msg.className='msg good'; msg.textContent='¡El agua llegó a la fuente!'; setTimeout(win,800); }
+  };
+  cells.forEach((b,i)=>b.addEventListener('click',()=>{ if(won) return; const r=Math.floor(i/n),c=i%n; grid[r][c]=rot(grid[r][c]); moves++; sfx('tick'); render(); }));
+  if(flow().ok){ const [r,c]=path[0]; grid[r][c]=rot(grid[r][c]); }
+  render();
+  return ()=>{};
+};
+
+/* 5. Preguntas finales: banco aleatorio con datos curiosos */
+const POOL = [
+  {q:'¿Qué significa Warmiwañusca?', o:['Paso de la mujer muerta','Puerta del Sol','Pueblo inaccesible','Siempre joven'], x:'El nombre viene de la silueta de la montaña, que parece una mujer recostada.'},
+  {q:'¿A qué altitud está el paso de Warmiwañusca?', o:['4215 m','3600 m','2430 m','5200 m'], x:'Es el punto más alto del Camino Inca clásico.'},
+  {q:'¿Quiénes llevaban los mensajes por el Qhapaq Ñan?', o:['Los chasquis','Los amautas','Los curacas','Los mitimaes'], x:'Corrían por relevos entre tambos para cubrir grandes distancias.'},
+  {q:'¿Qué usaban los incas para registrar números con cuerdas y nudos?', o:['El quipu','El pututu','El tumi','La chakana'], x:'La posición y la forma de cada nudo indicaban unidades, decenas o centenas.'},
+  {q:'¿En qué piso ecológico crece mejor el maíz?', o:['Quechua','Puna','Suni','Janca'], x:'La región Quechua, entre 2300 y 3500 m, tiene el clima templado de los valles.'},
+  {q:'¿Para qué servían principalmente los andenes?', o:['Cultivar en laderas y crear microclimas','Defender las ciudades','Guardar agua de lluvia','Marcar el camino'], x:'Cada terraza tenía su propia temperatura, humedad y suelo.'},
+  {q:'¿Qué significa Sayacmarca?', o:['Pueblo inaccesible','Montaña vieja','Lugar de descanso','Casa del agua'], x:'Se levanta sobre un espolón rocoso al que solo se llega por una escalera estrecha.'},
+  {q:'¿Qué significa Machu Picchu en quechua?', o:['Montaña vieja','Ciudad perdida','Templo del cóndor','Puerta del Sol'], x:'Huayna Picchu, el cerro de enfrente, significa “montaña joven”.'},
+  {q:'¿Qué inca ordenó construir Machu Picchu?', o:['Pachacútec','Atahualpa','Manco Cápac','Huáscar'], x:'Se construyó hacia 1450, durante la expansión del Tahuantinsuyo.'},
+  {q:'¿En qué año Hiram Bingham dio a conocer Machu Picchu al mundo?', o:['1911','1532','1821','1983'], x:'Las familias campesinas de la zona ya conocían el lugar.'},
+  {q:'¿Cómo se llama la gran red de caminos incas?', o:['Qhapaq Ñan','Inti Raymi','Ayllu','Tahuantinsuyo'], x:'Unía unos 30 000 km a través de seis países actuales.'},
+  {q:'¿Qué significa Intipunku?', o:['Puerta del Sol','Mirador del agua','Casa del chasqui','Paso del cóndor'], x:'Desde allí los caminantes ven Machu Picchu por primera vez.'},
+  {q:'En la cosmovisión andina, ¿qué mundo representa el cóndor?', o:['Hanan Pacha, el mundo de arriba','Uku Pacha, el mundo de abajo','Kay Pacha, el mundo de aquí'], x:'El cóndor se asocia al Hanan Pacha; el puma al Kay Pacha y la serpiente al Uku Pacha.'},
+  {q:'¿Qué significa Wiñay Wayna?', o:['Siempre joven','Ciudad sobre las nubes','Pueblo escarpado','Montaña vieja'], x:'Se cree que el nombre alude a las orquídeas que florecen todo el año en la zona.'},
+  {q:'¿Desde qué año Machu Picchu es Patrimonio de la Humanidad?', o:['1983','1911','2007','1950'], x:'En 2007 fue elegida una de las nuevas siete maravillas del mundo.'},
+  {q:'¿Qué hacían los caminantes andinos para resistir la altura?', o:['Mascar hojas de coca','Beber chicha fría','Correr más rápido','Dormir de día'], x:'El chacchado de coca sigue siendo una práctica tradicional en los Andes.'},
+];
+GAMES.quiz = (root, win) => {
+  const qs = shuffle(POOL).slice(0, D().quiz).map(q=>({...q, opts:shuffle(q.o.map((t,k)=>({t,ok:k===0})))}));
+  let i=0;
+  const show=()=>{
+    const q=qs[i];
+    root.innerHTML=`<div class="q"><span class="label">Cuerda ${i+1} de ${qs.length}</span><h3 style="font-size:1.3rem">${q.q}</h3>
+      <div class="opts">${q.opts.map((o,k)=>`<button class="opt" data-k="${k}">${o.t}</button>`).join('')}</div>
+      <p class="msg" aria-live="polite"></p><div id="nx"></div></div>`;
+    const msg=$('.msg',root);
+    root.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
+      const o=q.opts[+b.dataset.k];
+      if(o.ok){
+        b.classList.add('right'); sfx('good'); root.querySelectorAll('.opt').forEach(x=>x.disabled=true);
+        msg.className='msg good'; msg.textContent='Correcto. '+q.x;
+        const nb=h(`<button class="btn">${i+1<qs.length?'Siguiente pregunta':'Entrar a Machu Picchu'}</button>`);
+        $('#nx',root).appendChild(nb); nb.focus();
+        nb.addEventListener('click',()=>{ i++; i<qs.length?show():win(); });
+      } else { b.classList.add('wrong'); b.disabled=true; sfx('bad'); msg.className='msg bad'; msg.textContent='Ese nudo no corresponde. Prueba otra respuesta.'+penalize(); }
+    }));
+  };
+  show();
+  return ()=>{};
+};
+
+showCover();
+})();
+
+
+</script>
+</body>
+</html>
